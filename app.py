@@ -38,14 +38,7 @@ class MainHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         http_client = AsyncHTTPClient()
-
         yield self.work()
-
-        with tracer.trace("subcalls"):
-            response1, response2 = yield [
-                http_client.fetch("http://localhost:%d/success" % PORT),
-                http_client.fetch("http://localhost:%d/success" % PORT),
-            ]
         self.render("template.html")
 
     @tracer.wrap()
