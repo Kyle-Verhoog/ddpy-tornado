@@ -1,7 +1,7 @@
 try:
     from ddtrace import patch, tracer
 
-    patch(tornado=True)
+    patch(tornado=True, sqlalchemy=True, psycopg=True)
 except ImportError:
 
     class Span(object):
@@ -25,21 +25,43 @@ except ImportError:
 
 import os
 
+import sqlalchemy
 import tornado.ioloop
 import tornado.web
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
+from tornado_sqlalchemy import SessionMixin, SQLAlchemy, as_future
 
 
 PORT = os.getenv("PORT", 8888)
+DB_URL = os.getenv(
+    "DATABASE_URL", "postgresql+psycopg2://postgres:postgres@localhost:5432/postgres"
+)
 
 
-class MainHandler(tornado.web.RequestHandler):
+db = SQLAlchemy(DB_URL)
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
+    name = sqlalchemy.Column(sqlalchemy.String)
+
+
+# engine = sqlalchemy.create_engine(DB_URL)
+# Base.metadata.create_all(engine)
+# Session = sessionmaker(bind=engine)
+
+
+class MainHandler(SessionMixin, tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
+        count_fut = as_future(self.session.query(User).count)
         http_client = AsyncHTTPClient()
         yield self.work()
-        self.render("template.html")
+        count = yield count_fut
+        self.render("template.html", count=count)
 
     @tracer.wrap()
     @gen.coroutine
@@ -47,26 +69,8 @@ class MainHandler(tornado.web.RequestHandler):
         yield gen.sleep(0.005)
 
 
-class SuccessHandler(tornado.web.RequestHandler):
-    @gen.coroutine
-    def get(self):
-        self.write("hi")
-
-
-class FailureHandler(tornado.web.RequestHandler):
-    @gen.coroutine
-    def get(self):
-        raise Exception("Error")
-
-
 def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", MainHandler),
-            (r"/success", SuccessHandler),
-            (r"/failure", FailureHandler),
-        ]
-    )
+    return tornado.web.Application([(r"/", MainHandler),], db=db,)
 
 
 if __name__ == "__main__":
