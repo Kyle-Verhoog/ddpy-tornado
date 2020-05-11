@@ -2,6 +2,16 @@
 
 A Tornado app to experiment with tracing.
 
+## the app
+
+The app provides different routes for testing various tracer functionalities.
+
+
+```bash
+
+```
+
+
 ## setup
 
 ```bash
@@ -25,8 +35,14 @@ $ python app.py
 
 ## migrations
 
+### run migrations
+
+```bash
+$ alembic upgrade head
+```
+
+### creating a new migration
 ```bash
 # create new migration
 $ alembic revision --autogenerate -m "my change here"
-$ alembic upgrade head
 ```
