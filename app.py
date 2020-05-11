@@ -8,7 +8,7 @@ except ImportError:
         def __enter__(self):
             pass
 
-        def __exit__(*args, **kwargs):
+        def __exit__(self, *args, **kwargs):
             pass
 
     class Tracer(object):
@@ -39,7 +39,7 @@ DB_URL = os.getenv(
 )
 
 
-db = SQLAlchemy(DB_URL)
+db = SQLAlchemy(url=DB_URL)
 
 
 class User(db.Model):
@@ -47,11 +47,6 @@ class User(db.Model):
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     name = sqlalchemy.Column(sqlalchemy.String)
-
-
-# engine = sqlalchemy.create_engine(DB_URL)
-# Base.metadata.create_all(engine)
-# Session = sessionmaker(bind=engine)
 
 
 class MainHandler(SessionMixin, tornado.web.RequestHandler):
