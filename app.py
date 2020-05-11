@@ -64,8 +64,24 @@ class MainHandler(SessionMixin, tornado.web.RequestHandler):
         yield gen.sleep(0.005)
 
 
+class StressHandler(SessionMixin, tornado.web.RequestHandler):
+    @gen.coroutine
+    def get(self):
+        num_requests = int(self.get_argument("num_db_requests", 10))
+
+        for _ in range(num_requests):
+            count_fut = as_future(self.session.query(User).count)
+            count = yield count_fut
+
+        self.render("template.html", count=count)
+
+
+
 def make_app():
-    return tornado.web.Application([(r"/", MainHandler),], db=db,)
+    return tornado.web.Application([
+        (r"/", MainHandler),
+        (r"/stress", StressHandler),
+        ], db=db,)
 
 
 if __name__ == "__main__":
