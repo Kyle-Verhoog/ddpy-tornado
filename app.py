@@ -23,14 +23,21 @@ except ImportError:
 
     tracer = Tracer()
 
+import logging
 import os
 
 import sqlalchemy
 import tornado.ioloop
+import tornado.options
 import tornado.web
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
 from tornado_sqlalchemy import SessionMixin, SQLAlchemy, as_future
+
+
+logging.basicConfig()
+log = logging.getLogger(__name__)
+
 
 
 PORT = os.getenv("PORT", 8888)
@@ -68,6 +75,7 @@ class StressHandler(SessionMixin, tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         num_requests = int(self.get_argument("num_db_requests", 10))
+        log.warning("handling request with %d db requests", num_requests)
 
         for _ in range(num_requests):
             count_fut = as_future(self.session.query(User).count)
@@ -78,6 +86,7 @@ class StressHandler(SessionMixin, tornado.web.RequestHandler):
 
 
 def make_app():
+    tornado.options.parse_command_line()
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/stress", StressHandler),
