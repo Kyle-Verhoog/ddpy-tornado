@@ -32,7 +32,7 @@ import tornado.options
 import tornado.web
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient
-from tornado_sqlalchemy import SessionMixin, SQLAlchemy, as_future
+from vendor.tornado_sqlalchemy import SessionMixin, SQLAlchemy, as_future
 
 
 logging.basicConfig()
