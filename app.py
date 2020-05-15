@@ -1,7 +1,6 @@
 import logging
 import os
 
-from ddtrace import tracer
 import sqlalchemy
 import tornado.ioloop
 import tornado.options
@@ -13,7 +12,6 @@ from vendor.tornado_sqlalchemy import SessionMixin, SQLAlchemy, as_future
 
 logging.basicConfig()
 log = logging.getLogger(__name__)
-
 
 
 PORT = os.getenv("PORT", 8888)
@@ -36,15 +34,8 @@ class MainHandler(SessionMixin, tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         count_fut = as_future(self.session.query(User).count)
-        http_client = AsyncHTTPClient()
-        yield self.work()
         count = yield count_fut
         self.render("template.html", count=count)
-
-    @tracer.wrap()
-    @gen.coroutine
-    def work(self):
-        yield gen.sleep(0.005)
 
 
 class StressHandler(tornado.web.RequestHandler):
@@ -57,7 +48,6 @@ class StressHandler(tornado.web.RequestHandler):
         tag_key_size = int(self.get_argument("tag_key_size", 10))
         str_tag_value_size = int(self.get_argument("tag_value_size", 15))
 
-        log.warning("handling request with num_traces=%d, num_spans_per_trace=%d", num_traces, num_spans_per_trace)
 
         def _set_tags(span):
             for i in range(num_str_tags_per_span):
@@ -66,12 +56,18 @@ class StressHandler(tornado.web.RequestHandler):
             for i in range(num_int_tags_per_span):
                 span.set_tag("i{}".format(str(i) * (tag_key_size-1)), 12312312)
 
-        for _ in range(num_traces):
-            with tracer.trace("operation", service="stresser", resource="GET /stress") as s:
-                _set_tags(s)
-                for i in range(num_spans_per_trace-1):
-                    with tracer.trace("child_operation_{}".format(i)) as s:
-                        _set_tags(s)
+        try:
+            from ddtrace import tracer
+        except ImportError:
+            log.warning("handling the request - no tracer installed")
+        else:
+            log.warning("handling request with num_traces=%d, num_spans_per_trace=%d", num_traces, num_spans_per_trace)
+            for _ in range(num_traces):
+                with tracer.trace("operation", service="stresser", resource="GET /stress") as s:
+                    _set_tags(s)
+                    for i in range(num_spans_per_trace-1):
+                        with tracer.trace("child_operation_{}".format(i)) as s:
+                            _set_tags(s)
 
         self.write("OK")
 
@@ -87,7 +83,6 @@ class DatabaseStressHandler(SessionMixin, tornado.web.RequestHandler):
             count = yield count_fut
 
         self.render("template.html", count=count)
-
 
 
 def make_app():
