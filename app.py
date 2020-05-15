@@ -71,7 +71,36 @@ class MainHandler(SessionMixin, tornado.web.RequestHandler):
         yield gen.sleep(0.005)
 
 
-class StressHandler(SessionMixin, tornado.web.RequestHandler):
+class StressHandler(tornado.web.RequestHandler):
+    @gen.coroutine
+    def get(self):
+        num_traces = int(self.get_argument("traces", 1))
+        num_spans_per_trace = int(self.get_argument("spans_per_trace", 1))
+        num_str_tags_per_span = int(self.get_argument("str_tags_per_span", 5))
+        num_int_tags_per_span = int(self.get_argument("int_tags_per_span", 5))
+        tag_key_size = int(self.get_argument("tag_key_size", 10))
+        str_tag_value_size = int(self.get_argument("tag_value_size", 15))
+
+        log.warning("handling request with num_traces=%d, num_spans_per_trace=%d", num_traces, num_spans_per_trace)
+
+        def _set_tags(span):
+            for i in range(num_str_tags_per_span):
+                span.set_tag("s{}".format(str(i) * (tag_key_size-1)), "*" * str_tag_value_size)
+
+            for i in range(num_int_tags_per_span):
+                span.set_tag("i{}".format(str(i) * (tag_key_size-1)), 12312312)
+
+        for _ in range(num_traces):
+            with tracer.trace("operation", service="stresser", resource="GET /stress") as s:
+                _set_tags(s)
+                for i in range(num_spans_per_trace-1):
+                    with tracer.trace("child_operation_{}".format(i)) as s:
+                        _set_tags(s)
+
+        self.write("OK")
+
+
+class DatabaseStressHandler(SessionMixin, tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         num_requests = int(self.get_argument("num_db_requests", 10))
@@ -90,6 +119,7 @@ def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/stress", StressHandler),
+        (r"/db_stress", DatabaseStressHandler),
         ], db=db,)
 
 
