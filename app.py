@@ -1,31 +1,7 @@
-try:
-    from ddtrace import patch, tracer
-
-    patch(tornado=True, sqlalchemy=True, psycopg=True)
-except ImportError:
-
-    class Span(object):
-        def __enter__(self):
-            pass
-
-        def __exit__(self, *args, **kwargs):
-            pass
-
-    class Tracer(object):
-        def wrap(self):
-            def wrapped(f):
-                return f
-
-            return wrapped
-
-        def trace(self, *args, **kwargs):
-            return Span()
-
-    tracer = Tracer()
-
 import logging
 import os
 
+from ddtrace import tracer
 import sqlalchemy
 import tornado.ioloop
 import tornado.options
@@ -75,7 +51,7 @@ class StressHandler(tornado.web.RequestHandler):
     @gen.coroutine
     def get(self):
         num_traces = int(self.get_argument("traces", 1))
-        num_spans_per_trace = int(self.get_argument("spans_per_trace", 1))
+        num_spans_per_trace = int(self.get_argument("spans_per_trace", 0))
         num_str_tags_per_span = int(self.get_argument("str_tags_per_span", 5))
         num_int_tags_per_span = int(self.get_argument("int_tags_per_span", 5))
         tag_key_size = int(self.get_argument("tag_key_size", 10))

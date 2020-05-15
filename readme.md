@@ -29,7 +29,7 @@ pip install -r requirements.txt
 $ alembic upgrade head
 
 # start the app
-$ python app.py
+$ DATADOG_PATCH_MODULES="tornado:true,sqlalchemy:true,psycopg:true" ddtrace-run python app.py
 ```
 
 

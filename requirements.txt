@@ -1,4 +1,5 @@
 alembic==1.4.2
+ddtrace==0.37
 Mako==1.1.2
 MarkupSafe==1.1.1
 msgpack==1.0.0
